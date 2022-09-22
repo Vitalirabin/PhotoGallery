@@ -10,6 +10,7 @@ import com.example.photogallery.api.PhotoInterceptor
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
+import okhttp3.logging.HttpLoggingInterceptor
 import org.chromium.base.Log
 import retrofit2.Call
 import retrofit2.Callback
@@ -23,10 +24,12 @@ private const val TAG = "FlickrFetchr"
 class FlickrFetchr {
     private val flickrApi: FlickrApi
     private val gson = GsonBuilder().create().getAdapter(PhotoDeserializer::class.java)
-
     init {
+        val logging = HttpLoggingInterceptor()
+        logging.setLevel(HttpLoggingInterceptor.Level.BODY)
         val client = OkHttpClient.Builder()
             .addInterceptor(PhotoInterceptor())
+            .addInterceptor(logging)
             .build()
         val retrofit: Retrofit = Retrofit.Builder()
             .baseUrl("https://api.flickr.com/")
