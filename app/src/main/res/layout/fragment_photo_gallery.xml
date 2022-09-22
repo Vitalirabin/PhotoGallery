@@ -1,13 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/photo_recycle_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/purple_200">
-
     </androidx.recyclerview.widget.RecyclerView>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="@+id/photo_recycle_view"
+        app:layout_constraintEnd_toEndOf="@+id/photo_recycle_view"
+        app:layout_constraintStart_toStartOf="@+id/photo_recycle_view"
+        app:layout_constraintTop_toTopOf="@+id/photo_recycle_view" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

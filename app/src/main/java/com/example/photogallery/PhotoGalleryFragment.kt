@@ -1,12 +1,16 @@
 package com.example.photogallery
 
+import android.app.Activity
+import android.content.Context
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.view.*
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -75,6 +79,7 @@ class PhotoGalleryFragment : Fragment() {
                 photoRecyclerView.adapter = PhotoAdapter(galleryItems)
             }
         )
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -86,7 +91,10 @@ class PhotoGalleryFragment : Fragment() {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(p0: String): Boolean {
                     Log.d(TAG, "QueryTextSubmit:$p0")
+                    view?.findViewById<ProgressBar>(R.id.progress_bar)?.visibility=ProgressBar.VISIBLE
+                    photoRecyclerView.visibility=RecyclerView.INVISIBLE
                     photoGalleryViewModel.fetchPhoto(p0)
+                    hideKeyboardFrom(context,view)
                     return true
                 }
 
@@ -95,7 +103,12 @@ class PhotoGalleryFragment : Fragment() {
                     return false
                 }
             })
-            setOnSearchClickListener { searchView.setQuery(photoGalleryViewModel.searchTerm,false) }
+            setOnSearchClickListener {
+                searchView.setQuery(
+                    photoGalleryViewModel.searchTerm,
+                    false
+                )
+            }
         }
     }
 
@@ -109,12 +122,23 @@ class PhotoGalleryFragment : Fragment() {
         }
     }
 
+
+    fun hideKeyboardFrom(context: Context?, view: View?): Boolean {
+        val imm =
+            context?.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(view?.windowToken, 0)
+        return true
+    }
+
     private class PhotoHolder(private val itemImageView: ImageView) :
         RecyclerView.ViewHolder(itemImageView) {
         val bindDrawable: (Drawable) -> Unit = itemImageView::setImageDrawable
     }
 
-    private inner class PhotoAdapter(private val galleryItems: List<GalleryItem>) :
+    private inner class PhotoAdapter(
+        private
+        val galleryItems: List<GalleryItem>
+    ) :
         RecyclerView.Adapter<PhotoHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoHolder {
             val view = layoutInflater.inflate(
