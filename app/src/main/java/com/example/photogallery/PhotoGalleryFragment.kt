@@ -10,7 +10,10 @@ import android.widget.ImageView
 import android.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.*
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import org.chromium.base.Log
@@ -39,15 +42,15 @@ class PhotoGalleryFragment : Fragment() {
         thumbnaiViewLifecycleOwner = this.viewLifecycleOwnerLiveData
         lifecycle.addObserver(thumbnailDownloader.fragmentLifecycleObserver)
 
-      /*  val constraints=Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.UNMETERED)
-            .build()
-        val workerRequest=OneTimeWorkRequest
-            .Builder(PollWorker::class.java)
-            .setConstraints(constraints)
-            .build()
-        WorkManager.getInstance()
-            .enqueue(workerRequest)*/
+        /*  val constraints=Constraints.Builder()
+              .setRequiredNetworkType(NetworkType.UNMETERED)
+              .build()
+          val workerRequest=OneTimeWorkRequest
+              .Builder(PollWorker::class.java)
+              .setConstraints(constraints)
+              .build()
+          WorkManager.getInstance()
+              .enqueue(workerRequest)*/
     }
 
     override fun onCreateView(
@@ -77,10 +80,10 @@ class PhotoGalleryFragment : Fragment() {
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.fragment_photogallery, menu)
-        val searchItem:MenuItem=menu.findItem(R.id.menu_item_search)
-        val searchView=searchItem.actionView as SearchView
+        val searchItem: MenuItem = menu.findItem(R.id.menu_item_search)
+        val searchView = searchItem.actionView as SearchView
         searchView.apply {
-            setOnQueryTextListener(object :SearchView.OnQueryTextListener{
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(p0: String): Boolean {
                     Log.d(TAG, "QueryTextSubmit:$p0")
                     photoGalleryViewModel.fetchPhoto(p0)
@@ -92,6 +95,17 @@ class PhotoGalleryFragment : Fragment() {
                     return false
                 }
             })
+            setOnSearchClickListener { searchView.setQuery(photoGalleryViewModel.searchTerm,false) }
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.menu_item_clear -> {
+                photoGalleryViewModel.fetchPhoto("")
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 
