@@ -1,16 +1,23 @@
 package com.example.photogallery
 
+import android.app.Activity
+import android.content.Context
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.view.*
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.*
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import org.chromium.base.Log
@@ -23,6 +30,7 @@ class PhotoGalleryFragment : Fragment() {
     private lateinit var photoGalleryViewModel: PhotoGalleryViewModel
     private lateinit var thumbnailDownloader: ThumbnailDownloader<PhotoHolder>
     private lateinit var thumbnaiViewLifecycleOwner: LiveData<LifecycleOwner>
+    private lateinit var progressBar: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,20 +42,19 @@ class PhotoGalleryFragment : Fragment() {
             ThumbnailDownloader(responseHandler) { photoHolder, bitmap ->
                 val drawable = BitmapDrawable(resources, bitmap)
                 photoHolder.bindDrawable(drawable)
-
             }
         thumbnaiViewLifecycleOwner = this.viewLifecycleOwnerLiveData
         lifecycle.addObserver(thumbnailDownloader.fragmentLifecycleObserver)
 
-      /*  val constraints=Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.UNMETERED)
-            .build()
-        val workerRequest=OneTimeWorkRequest
-            .Builder(PollWorker::class.java)
-            .setConstraints(constraints)
-            .build()
-        WorkManager.getInstance()
-            .enqueue(workerRequest)*/
+        /*  val constraints=Constraints.Builder()
+              .setRequiredNetworkType(NetworkType.UNMETERED)
+              .build()
+          val workerRequest=OneTimeWorkRequest
+              .Builder(PollWorker::class.java)
+              .setConstraints(constraints)
+              .build()
+          WorkManager.getInstance()
+              .enqueue(workerRequest)*/
     }
 
     override fun onCreateView(
@@ -58,6 +65,7 @@ class PhotoGalleryFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_photo_gallery, container, false)
         photoRecyclerView = view.findViewById<RecyclerView>(R.id.photo_recycle_view)
         photoRecyclerView.layoutManager = GridLayoutManager(context, 3)
+        progressBar = view!!.findViewById<ProgressBar>(R.id.progress_bar)
         thumbnaiViewLifecycleOwner.value?.lifecycle?.addObserver(
             thumbnailDownloader.viewLifecycleObserver
         )
@@ -72,18 +80,22 @@ class PhotoGalleryFragment : Fragment() {
                 photoRecyclerView.adapter = PhotoAdapter(galleryItems)
             }
         )
+
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
         inflater.inflate(R.menu.fragment_photogallery, menu)
-        val searchItem:MenuItem=menu.findItem(R.id.menu_item_search)
-        val searchView=searchItem.actionView as SearchView
+        val searchItem: MenuItem = menu.findItem(R.id.menu_item_search)
+        val searchView = searchItem.actionView as SearchView
         searchView.apply {
-            setOnQueryTextListener(object :SearchView.OnQueryTextListener{
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(p0: String): Boolean {
                     Log.d(TAG, "QueryTextSubmit:$p0")
+                    progressBar.visibility = ProgressBar.VISIBLE
+                    photoRecyclerView.visibility = RecyclerView.INVISIBLE
                     photoGalleryViewModel.fetchPhoto(p0)
+                    hideKeyboardFrom(context, view)
                     return true
                 }
 
@@ -92,7 +104,31 @@ class PhotoGalleryFragment : Fragment() {
                     return false
                 }
             })
+            setOnSearchClickListener {
+                searchView.setQuery(
+                    photoGalleryViewModel.searchTerm,
+                    false
+                )
+            }
         }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.menu_item_clear -> {
+                photoGalleryViewModel.fetchPhoto("")
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+
+    fun hideKeyboardFrom(context: Context?, view: View?): Boolean {
+        val imm =
+            context?.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(view?.windowToken, 0)
+        return true
     }
 
     private class PhotoHolder(private val itemImageView: ImageView) :
@@ -100,7 +136,10 @@ class PhotoGalleryFragment : Fragment() {
         val bindDrawable: (Drawable) -> Unit = itemImageView::setImageDrawable
     }
 
-    private inner class PhotoAdapter(private val galleryItems: List<GalleryItem>) :
+    private inner class PhotoAdapter(
+        private
+        val galleryItems: List<GalleryItem>
+    ) :
         RecyclerView.Adapter<PhotoHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoHolder {
             val view = layoutInflater.inflate(
@@ -119,6 +158,10 @@ class PhotoGalleryFragment : Fragment() {
             ) ?: ColorDrawable()
             holder.bindDrawable(placeholder)
             thumbnailDownloader.queueThumbnail(holder, galleryItem.url)
+            if (position >= 20) {
+                progressBar.visibility = ProgressBar.INVISIBLE
+                photoRecyclerView.visibility = RecyclerView.VISIBLE
+            }
         }
 
         override fun getItemCount(): Int = galleryItems.size
