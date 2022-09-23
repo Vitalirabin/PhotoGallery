@@ -30,6 +30,7 @@ class PhotoGalleryFragment : Fragment() {
     private lateinit var photoGalleryViewModel: PhotoGalleryViewModel
     private lateinit var thumbnailDownloader: ThumbnailDownloader<PhotoHolder>
     private lateinit var thumbnaiViewLifecycleOwner: LiveData<LifecycleOwner>
+    private lateinit var progressBar: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,7 +42,6 @@ class PhotoGalleryFragment : Fragment() {
             ThumbnailDownloader(responseHandler) { photoHolder, bitmap ->
                 val drawable = BitmapDrawable(resources, bitmap)
                 photoHolder.bindDrawable(drawable)
-
             }
         thumbnaiViewLifecycleOwner = this.viewLifecycleOwnerLiveData
         lifecycle.addObserver(thumbnailDownloader.fragmentLifecycleObserver)
@@ -65,6 +65,7 @@ class PhotoGalleryFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_photo_gallery, container, false)
         photoRecyclerView = view.findViewById<RecyclerView>(R.id.photo_recycle_view)
         photoRecyclerView.layoutManager = GridLayoutManager(context, 3)
+        progressBar = view!!.findViewById<ProgressBar>(R.id.progress_bar)
         thumbnaiViewLifecycleOwner.value?.lifecycle?.addObserver(
             thumbnailDownloader.viewLifecycleObserver
         )
@@ -91,10 +92,10 @@ class PhotoGalleryFragment : Fragment() {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(p0: String): Boolean {
                     Log.d(TAG, "QueryTextSubmit:$p0")
-                    view?.findViewById<ProgressBar>(R.id.progress_bar)?.visibility=ProgressBar.VISIBLE
-                    photoRecyclerView.visibility=RecyclerView.INVISIBLE
+                    progressBar.visibility = ProgressBar.VISIBLE
+                    photoRecyclerView.visibility = RecyclerView.INVISIBLE
                     photoGalleryViewModel.fetchPhoto(p0)
-                    hideKeyboardFrom(context,view)
+                    hideKeyboardFrom(context, view)
                     return true
                 }
 
@@ -157,6 +158,10 @@ class PhotoGalleryFragment : Fragment() {
             ) ?: ColorDrawable()
             holder.bindDrawable(placeholder)
             thumbnailDownloader.queueThumbnail(holder, galleryItem.url)
+            if (position >= 20) {
+                progressBar.visibility = ProgressBar.INVISIBLE
+                photoRecyclerView.visibility = RecyclerView.VISIBLE
+            }
         }
 
         override fun getItemCount(): Int = galleryItems.size
