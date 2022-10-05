@@ -2,6 +2,7 @@ package com.example.photogallery
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -19,6 +20,11 @@ class PhotoGalleryActivity : AppCompatActivity() {
                 .beginTransaction()
                 .add(R.id.fragment_container, PhotoGalleryFragment.newInstance())
                 .commit()
+        }
+    }
+    companion object {
+        fun newIntent(context: Context):Intent{
+            return Intent(context,PhotoGalleryActivity::class.java)
         }
     }
 }

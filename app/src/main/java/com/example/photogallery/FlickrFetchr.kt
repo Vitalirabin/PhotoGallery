@@ -24,6 +24,7 @@ private const val TAG = "FlickrFetchr"
 class FlickrFetchr {
     private val flickrApi: FlickrApi
     private val gson = GsonBuilder().create().getAdapter(PhotoDeserializer::class.java)
+
     init {
         val logging = HttpLoggingInterceptor()
         logging.setLevel(HttpLoggingInterceptor.Level.BODY)
@@ -40,12 +41,19 @@ class FlickrFetchr {
         flickrApi = retrofit.create(FlickrApi::class.java)
     }
 
-    fun fetchPhotos(): LiveData<List<GalleryItem>> {
-        return fetchPhotosMetaData(flickrApi.fetchPhoto())
+    fun fetchPhotoRequest(): Call<FlickrResponse> {
+        return flickrApi.fetchPhoto()
     }
 
+    fun fetchPhotos(): LiveData<List<GalleryItem>> {
+        return fetchPhotosMetaData(fetchPhotoRequest())
+    }
+
+    fun searchPhotoRequest(query: String):Call<FlickrResponse>{
+        return flickrApi.searchPhotos(query)
+    }
     fun searchPhoto(query: String): LiveData<List<GalleryItem>> {
-        return fetchPhotosMetaData(flickrApi.searchPhotos(query))
+        return fetchPhotosMetaData(searchPhotoRequest(query))
     }
 
     private fun fetchPhotosMetaData(flickrRequest: Call<FlickrResponse>):
