@@ -20,10 +20,13 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.work.*
 import org.chromium.base.Log
+import java.util.concurrent.TimeUnit
 
 
 private const val TAG = "PhotoGalleryFragment"
+private const val POLL_WORK = "POLL_WORK"
 
 class PhotoGalleryFragment : Fragment() {
     private lateinit var photoRecyclerView: RecyclerView
@@ -45,16 +48,6 @@ class PhotoGalleryFragment : Fragment() {
             }
         thumbnaiViewLifecycleOwner = this.viewLifecycleOwnerLiveData
         lifecycle.addObserver(thumbnailDownloader.fragmentLifecycleObserver)
-
-        /*  val constraints=Constraints.Builder()
-              .setRequiredNetworkType(NetworkType.UNMETERED)
-              .build()
-          val workerRequest=OneTimeWorkRequest
-              .Builder(PollWorker::class.java)
-              .setConstraints(constraints)
-              .build()
-          WorkManager.getInstance()
-              .enqueue(workerRequest)*/
     }
 
     override fun onCreateView(
@@ -80,6 +73,18 @@ class PhotoGalleryFragment : Fragment() {
                 photoRecyclerView.adapter = PhotoAdapter(galleryItems)
             }
         )
+        photoGalleryViewModel.isLoading.observe(
+            viewLifecycleOwner,
+            Observer {
+                if (it) {
+                    progressBar.visibility = ProgressBar.VISIBLE
+                    photoRecyclerView.visibility = RecyclerView.INVISIBLE
+                } else {
+                    progressBar.visibility = ProgressBar.INVISIBLE
+                    photoRecyclerView.visibility = RecyclerView.VISIBLE
+                }
+            }
+        )
 
     }
 
@@ -92,8 +97,6 @@ class PhotoGalleryFragment : Fragment() {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(p0: String): Boolean {
                     Log.d(TAG, "QueryTextSubmit:$p0")
-                    progressBar.visibility = ProgressBar.VISIBLE
-                    photoRecyclerView.visibility = RecyclerView.INVISIBLE
                     photoGalleryViewModel.fetchPhoto(p0)
                     hideKeyboardFrom(context, view)
                     return true
@@ -111,6 +114,14 @@ class PhotoGalleryFragment : Fragment() {
                 )
             }
         }
+        val toggleItem = menu.findItem(R.id.menu_item_toggle_polling)
+        val isPolling = QueryPreferences.isPolling(requireContext())
+        val toggleItemTitle = if (isPolling) {
+            R.string.stop_polling
+        } else {
+            R.string.start_polling
+        }
+        toggleItem.setTitle(toggleItemTitle)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -118,6 +129,28 @@ class PhotoGalleryFragment : Fragment() {
             R.id.menu_item_clear -> {
                 photoGalleryViewModel.fetchPhoto("")
                 true
+            }
+            R.id.menu_item_toggle_polling -> {
+                val isPolling = QueryPreferences.isPolling(requireContext())
+                if (isPolling) {
+                    WorkManager.getInstance().cancelUniqueWork(POLL_WORK)
+                    QueryPreferences.setPoling(requireContext(), false)
+                } else {
+                    val constraints = Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.UNMETERED)
+                        .build()
+                    val periodicWorkRequest = PeriodicWorkRequest
+                        .Builder(PollWorker::class.java, 15, TimeUnit.MINUTES)
+                        .setConstraints(constraints)
+                        .build()
+                    WorkManager.getInstance().enqueueUniquePeriodicWork(
+                        POLL_WORK, ExistingPeriodicWorkPolicy.KEEP,
+                        periodicWorkRequest
+                    )
+                    QueryPreferences.setPoling(requireContext(), true)
+                }
+                activity?.invalidateOptionsMenu()
+                return true
             }
             else -> super.onOptionsItemSelected(item)
         }
@@ -129,6 +162,11 @@ class PhotoGalleryFragment : Fragment() {
             context?.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(view?.windowToken, 0)
         return true
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        WorkManager.getInstance().cancelAllWork()
     }
 
     private class PhotoHolder(private val itemImageView: ImageView) :
@@ -158,10 +196,6 @@ class PhotoGalleryFragment : Fragment() {
             ) ?: ColorDrawable()
             holder.bindDrawable(placeholder)
             thumbnailDownloader.queueThumbnail(holder, galleryItem.url)
-            if (position >= 20) {
-                progressBar.visibility = ProgressBar.INVISIBLE
-                photoRecyclerView.visibility = RecyclerView.VISIBLE
-            }
         }
 
         override fun getItemCount(): Int = galleryItems.size

@@ -10,10 +10,12 @@ class PhotoGalleryViewModel(private val app: Application) : AndroidViewModel(app
     val galleryItemLiveData: LiveData<List<GalleryItem>>
     private val flickrFetchr = FlickrFetchr()
     private val mutableSearchTerm = MutableLiveData<String>()
+    var isLoading = MutableLiveData<Boolean>(false)
     val searchTerm: String
         get() = mutableSearchTerm.value ?: ""
 
     init {
+        isLoading.value = true
         mutableSearchTerm.value = QueryPreferences.getStoredQuery(app)
         galleryItemLiveData = Transformations.switchMap(mutableSearchTerm) {
             if (it.isBlank()) {
@@ -21,6 +23,7 @@ class PhotoGalleryViewModel(private val app: Application) : AndroidViewModel(app
             } else flickrFetchr.searchPhoto(it)
 
         }
+        isLoading.value = false
     }
 
     fun fetchPhoto(query: String = "") {
