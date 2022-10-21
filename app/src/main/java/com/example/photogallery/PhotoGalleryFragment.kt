@@ -2,7 +2,6 @@ package com.example.photogallery
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
@@ -13,6 +12,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.SearchView
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
@@ -183,8 +183,14 @@ class PhotoGalleryFragment : VisibleFragment() {
         }
 
         override fun onClick(v: View?) {
-            val intent = Intent(Intent.ACTION_VIEW, galleryItem.photoPageUri)
-            startActivity(intent)
+/*   val intent=Intent(Intent.ACTION_VIEW,galleryItem.photoPageUri)
+  val intent = PhotoPageActivity.newIntent(requireContext(), galleryItem.photoPageUri)
+  startActivity(intent)*/
+            CustomTabsIntent.Builder()
+                .setToolbarColor(ContextCompat.getColor(requireContext(), R.color.purple_700))
+                .setShowTitle(true)
+                .build()
+                .launchUrl(requireContext(), galleryItem.photoPageUri)
         }
     }
 
@@ -220,4 +226,5 @@ class PhotoGalleryFragment : VisibleFragment() {
     companion object {
         fun newInstance() = PhotoGalleryFragment()
     }
+
 }
